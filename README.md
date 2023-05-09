@@ -21,7 +21,10 @@ COPY --from=ghcr.io/dpc-sdp/bay-section-ip-controller:main /usr/local/bin/bay-se
 
 ```
 $ bay-section-ip-controller -h
+
 Usage of bay-section-ip-controller:
+  -a string
+        Comma separate list of applications to update
   -b string
         Comma separated list of IPs to always include in the blocklist
   -e string
