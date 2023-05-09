@@ -18,6 +18,7 @@ type SectionAPI struct {
 	AccountId              string
 	BlockedIps             SectionIpRestrictionSchema
 	ActionableEnvironments []string
+	ActionableApplications []string
 	Applications           []SectionApp
 	Client                 *http.Client
 }
@@ -212,9 +213,27 @@ func (section *SectionAPI) GetIPBlocklist(app *SectionApp, env *SectionEnvironme
 func (section *SectionAPI) AddIPBlocklist(i SectionIpRestrictionSchema) (bool, error) {
 	payload, _ := json.Marshal(i)
 	for _, app := range section.Applications {
-		if app.ApplicationName != "www.ssp.vic.gov.au" {
+		action := false
+		if len(section.ActionableApplications) > 0 {
+			for _, a := range section.ActionableApplications {
+				if app.ApplicationName == a {
+					action = true
+					break
+				}
+			}
+		} else {
+			action = true
+		}
+
+		if !action {
+			msg, _ := json.Marshal(Log{
+				Status:  "info",
+				Message: fmt.Sprintf("Skipping %s due to ActionableApplications exclusion", app.ApplicationName),
+			})
+			fmt.Println(string(msg))
 			continue
 		}
+
 		for _, k := range section.ActionableEnvironments {
 			if env, exists := app.Environments[k]; exists {
 				ipRestrictionAddr := fmt.Sprintf("%s/account/%s/application/%s/environment/%s/ipRestrictions", section.Host, section.AccountId, strconv.Itoa(app.Id), env.Name)

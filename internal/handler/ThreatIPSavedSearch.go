@@ -38,6 +38,6 @@ func (t *ThreatIPSavedSearch) Serve(w http.ResponseWriter, r *http.Request) {
 		ips = util.SectionIpRestrictionSchema{IpBlacklist: []string{}}
 	}
 
-	// go t.Section.AddIPBlocklist(ips)
+	go t.Section.AddIPBlocklist(ips)
 	w.WriteHeader(http.StatusOK)
 }
