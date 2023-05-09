@@ -21,6 +21,7 @@ var (
 	port             = flag.String("p", "80", "TCP listen port")
 	blockedIps       = flag.String("b", "", "Comma separated list of IPs to always include in the blocklist")
 	environments     = flag.String("e", "Develop", "Comma separated list of environments to update")
+	applications     = flag.String("a", "", "Comma separate list of applications to update")
 	sectionUsername  = flag.String("u", os.Getenv("SECTION_IO_USERNAME"), "User for Section API")
 	sectionToken     = flag.String("t", os.Getenv("SECTION_IO_TOKEN"), "Token for Section API")
 	sectionAccountId = flag.String("i", os.Getenv("SECTION_IO_ACCOUNT_ID"), "Account ID for Section API")
@@ -34,6 +35,7 @@ func main() {
 		Token:                  *sectionToken,
 		AccountId:              *sectionAccountId,
 		ActionableEnvironments: strings.Split(*environments, ","),
+		ActionableApplications: strings.Split(*applications, ","),
 		Host:                   "https://aperture.section.io/api/v1",
 		Client:                 &http.Client{},
 		BlockedIps: util.SectionIpRestrictionSchema{
