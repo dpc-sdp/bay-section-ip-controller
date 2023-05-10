@@ -2,6 +2,7 @@ package util_test
 
 import (
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
 	"testing"
@@ -99,4 +100,73 @@ func TestGetEnvironments(t *testing.T) {
 
 	_, ok := app.Environments["Production"]
 	assert.True(t, ok)
+}
+
+func TestAddIPBlocklistOK(t *testing.T) {
+	response := &http.Response{
+		StatusCode: http.StatusOK,
+		Body: ioutil.NopCloser(strings.NewReader(`[
+			"ip_blacklist": ["10.0.0.1"]
+		]`)),
+	}
+	mockTransport := &MockRoundTripper{
+		Response: response,
+		Err:      nil,
+	}
+
+	client := &http.Client{Transport: mockTransport}
+	env := util.SectionEnvironment{Name: "test"}
+	app := util.SectionApp{ApplicationName: "test", Id: 1}
+	app.Environments = make(map[string]util.SectionEnvironment)
+	app.Environments["test"] = env
+
+	section := util.SectionAPI{
+		Client:       client,
+		Host:         "https://example.com",
+		AccountId:    "1",
+		Applications: []util.SectionApp{app},
+	}
+
+	ips := util.SectionIpRestrictionSchema{
+		IpBlacklist: []string{"10.0.0.1"},
+	}
+
+	result, err := section.AddIPBlocklist(app, env, ips)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	assert.True(t, result)
+}
+
+func TestAddIPBlockListFail(t *testing.T) {
+	response := &http.Response{
+		StatusCode: http.StatusUnauthorized,
+		Body:       ioutil.NopCloser(strings.NewReader(`[]`)),
+	}
+	mockTransport := &MockRoundTripper{
+		Response: response,
+		Err:      nil,
+	}
+
+	client := &http.Client{Transport: mockTransport}
+	env := util.SectionEnvironment{Name: "test"}
+	app := util.SectionApp{ApplicationName: "test", Id: 1}
+	app.Environments = make(map[string]util.SectionEnvironment)
+	app.Environments["test"] = env
+
+	section := util.SectionAPI{
+		Client:       client,
+		Host:         "https://example.com",
+		AccountId:    "1",
+		Applications: []util.SectionApp{app},
+	}
+
+	ips := util.SectionIpRestrictionSchema{
+		IpBlacklist: []string{"10.0.0.1"},
+	}
+
+	result, _ := section.AddIPBlocklist(app, env, ips)
+	assert.False(t, result)
 }
