@@ -210,8 +210,7 @@ func (section *SectionAPI) GetIPBlocklist(app *SectionApp, env *SectionEnvironme
 	return ips, nil
 }
 
-func (section *SectionAPI) AddIPBlocklist(i SectionIpRestrictionSchema) (bool, error) {
-	payload, _ := json.Marshal(i)
+func (section *SectionAPI) AddAllIPBlocklist(i SectionIpRestrictionSchema) (bool, error) {
 	for _, app := range section.Applications {
 		action := false
 		if len(section.ActionableApplications) > 0 {
@@ -234,48 +233,57 @@ func (section *SectionAPI) AddIPBlocklist(i SectionIpRestrictionSchema) (bool, e
 			continue
 		}
 
-		for _, k := range section.ActionableEnvironments {
-			if env, exists := app.Environments[k]; exists {
-				ipRestrictionAddr := fmt.Sprintf("%s/account/%s/application/%s/environment/%s/ipRestrictions", section.Host, section.AccountId, strconv.Itoa(app.Id), env.Name)
-				req, _ := http.NewRequest(http.MethodPost, ipRestrictionAddr, bytes.NewBuffer(payload))
-				req.SetBasicAuth(section.Username, section.Token)
-				req.Header.Set("Content-Type", "application/json")
-				resp, err := section.Client.Do(req)
-				if err != nil {
-					msg, _ := json.Marshal(Log{
-						Status:  "fail",
-						Message: string(err.Error()),
-					})
-					fmt.Println(string(msg))
-					continue
-				}
-				if resp.StatusCode == http.StatusUnauthorized {
-					msg, _ := json.Marshal(Log{
-						Status:  "fail",
-						Message: fmt.Sprintf("addIPBlocklist: unauthorised (%s)", app.ApplicationName),
-					})
-					fmt.Println(string(msg))
-					continue
-				}
-				if resp.StatusCode != http.StatusOK {
-					msg, _ := json.Marshal(Log{
-						Status:  "fail",
-						Message: fmt.Sprintf("addIPBlocklist: unauthorised (%s)", app.ApplicationName),
-					})
-					fmt.Println(string(msg))
-					continue
-				}
-				msg, _ := json.Marshal(Log{
-					Status:          "success",
-					Message:         fmt.Sprintf("Updated IP blocklist"),
-					ApplicationName: app.ApplicationName,
-					EnvironmentName: env.Name,
-					IPList:          i.IpBlacklist,
-				})
-				fmt.Println(string(msg))
+		for _, e := range section.ActionableEnvironments {
+			env, exists := app.Environments[e]
+			if !exists {
+				continue
 			}
+			go section.AddIPBlocklist(app, env, i)
 		}
+
 	}
+	return true, nil
+}
+
+func (section *SectionAPI) AddIPBlocklist(app SectionApp, env SectionEnvironment, i SectionIpRestrictionSchema) (bool, error) {
+	payload, _ := json.Marshal(i)
+	ipRestrictionAddr := fmt.Sprintf("%s/account/%s/application/%s/environment/%s/ipRestrictions", section.Host, section.AccountId, strconv.Itoa(app.Id), env.Name)
+	req, _ := http.NewRequest(http.MethodPost, ipRestrictionAddr, bytes.NewBuffer(payload))
+	req.SetBasicAuth(section.Username, section.Token)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := section.Client.Do(req)
+	if err != nil {
+		msg, _ := json.Marshal(Log{
+			Status:  "fail",
+			Message: string(err.Error()),
+		})
+		fmt.Println(string(msg))
+		return false, errors.New(string(msg))
+	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		msg, _ := json.Marshal(Log{
+			Status:  "fail",
+			Message: fmt.Sprintf("addIPBlocklist: unauthorised (%s:%s)", app.ApplicationName, env.Name),
+		})
+		fmt.Println(string(msg))
+		return false, errors.New(string(msg))
+	}
+	if resp.StatusCode != http.StatusOK {
+		msg, _ := json.Marshal(Log{
+			Status:  "fail",
+			Message: fmt.Sprintf("addIPBlocklist: unauthorised (%s:%s)", app.ApplicationName, env.Name),
+		})
+		fmt.Println(string(msg))
+		return false, errors.New(string(msg))
+	}
+	msg, _ := json.Marshal(Log{
+		Status:          "success",
+		Message:         fmt.Sprintf("Updated IP blocklist"),
+		ApplicationName: app.ApplicationName,
+		EnvironmentName: env.Name,
+		IPList:          i.IpBlacklist,
+	})
+	fmt.Println(string(msg))
 
 	return true, nil
 }
