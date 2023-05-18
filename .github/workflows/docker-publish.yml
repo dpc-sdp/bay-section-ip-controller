@@ -23,7 +23,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-        
+        with:
+          submodules: recusrive
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
 
