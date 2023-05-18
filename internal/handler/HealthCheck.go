@@ -8,7 +8,7 @@ import (
 )
 
 type HealthCheck struct {
-	Section util.SectionAPI
+	Section util.Section
 }
 
 type HealthCheckResponse struct {
@@ -22,18 +22,7 @@ func (t *HealthCheck) Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a := t.Section.GetAccount()
-
 	var b HealthCheckResponse
-
-	if a.Name == "" {
-		b.Reason = "Unable to fetch account details"
-		b.Status = "fail"
-		body, _ := json.Marshal(b)
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(body)
-		return
-	}
 
 	b.Status = "ok"
 	b.Reason = "All checks passed"

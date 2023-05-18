@@ -1,0 +1,3 @@
+[submodule "internal/sectionio"]
+	path = internal/sectionio
+	url = git@github.com:dpc-sdp/go-section-io.git
