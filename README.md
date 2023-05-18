@@ -27,6 +27,8 @@ Usage of bay-section-ip-controller:
         Comma separate list of applications to update
   -b string
         Comma separated list of IPs to always include in the blocklist
+  -debug
+        Sets log level to debug
   -e string
         Comma separated list of environments to update (default "Develop")
   -i string
