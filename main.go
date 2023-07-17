@@ -53,6 +53,7 @@ func main() {
 		Auth:                   auth,
 		Client:                 client,
 		Logger:                 logger,
+		IPTracker:              util.NewIPTracker(),
 		ActionableAccounts:     strings.Split(*sectionAccountId, ","),
 		ActionableEnvironments: strings.Split(*environments, ","),
 		ActionableApplications: strings.Split(*applications, ","),
@@ -68,15 +69,19 @@ func main() {
 	router := http.NewServeMux()
 	router.HandleFunc("/_healthz", (&handler.HealthCheck{Section: s}).Serve)
 	router.HandleFunc("/v1/ip/add", (&handler.ThreatIPSavedSearch{Section: s}).Serve)
+	router.HandleFunc("/v1/ip/list", (&handler.ThreatIPList{Section: s}).Serve)
 
 	// Register the middleware.
 	username := os.Getenv("BASIC_AUTH_USERNAME")
 	password := os.Getenv("BASIC_AUTH_PASSWORD")
 
 	b := middleware.BasicAuth{
-		Username:  username,
-		Password:  password,
-		AppliesTo: []string{"/v1/ip/add"},
+		Username: username,
+		Password: password,
+		AppliesTo: []string{
+			"/v1/ip/add",
+			"/v1/ip/list",
+		},
 	}
 
 	handler := applyMiddleware(router, b.Do)

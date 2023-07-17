@@ -13,6 +13,7 @@ type Section struct {
 	Client                 *sectionio.APIClient
 	BlockedIps             sectionio.IpRestrictions
 	Logger                 zerolog.Logger
+	IPTracker              *IPTracker
 	ActionableAccounts     []string
 	ActionableEnvironments []string
 	ActionableApplications []string
@@ -97,6 +98,13 @@ func (s *Section) AddIpRestrictionsToAllApplications(ips sectionio.IpRestriction
 							l.Error().Err(err)
 							return
 						}
+
+						for _, ip := range ips.IpBlacklist {
+							s.IPTracker.TrackIP(ip)
+						}
+
+						ips.IpBlacklist = append(ips.IpBlacklist, s.IPTracker.BackoffIPs()...)
+
 						l.Info().Int64("account", accountId).Strs("ips", ips.IpBlacklist).Str("env", envName).Str("app", app.ApplicationName).Msg("successfully updated ip restrictions")
 					}(s.Auth, int64(account.Id), app, env.EnvironmentName, ips, s.Logger)
 				}
