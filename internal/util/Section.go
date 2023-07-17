@@ -93,18 +93,15 @@ func (s *Section) AddIpRestrictionsToAllApplications(ips sectionio.IpRestriction
 			for _, env := range app.Environments {
 				if s.IsActionableEnvironment(env.EnvironmentName) {
 					go func(ctx context.Context, accountId int64, app sectionio.AccountGraphApplications, envName string, ipRestrction sectionio.IpRestrictions, l zerolog.Logger) {
+						for _, ip := range ips.IpBlacklist {
+							s.IPTracker.TrackIP(ip)
+						}
+						ips.IpBlacklist = append(ips.IpBlacklist, s.IPTracker.BackoffIPs()...)
 						_, _, err := s.Client.EnvironmentApi.EnvironmentIpRestrictionsPost(ctx, accountId, int64(app.Id), envName, ips)
 						if err != nil {
 							l.Error().Err(err)
 							return
 						}
-
-						for _, ip := range ips.IpBlacklist {
-							s.IPTracker.TrackIP(ip)
-						}
-
-						ips.IpBlacklist = append(ips.IpBlacklist, s.IPTracker.BackoffIPs()...)
-
 						l.Info().Int64("account", accountId).Strs("ips", ips.IpBlacklist).Str("env", envName).Str("app", app.ApplicationName).Msg("successfully updated ip restrictions")
 					}(s.Auth, int64(account.Id), app, env.EnvironmentName, ips, s.Logger)
 				}
