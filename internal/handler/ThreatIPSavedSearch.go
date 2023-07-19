@@ -5,11 +5,12 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/dpc-sdp/bay-section-ip-controller/internal/sectionio"
 	"github.com/dpc-sdp/bay-section-ip-controller/internal/util"
 )
 
 type ThreatIPSavedSearch struct {
-	Section util.SectionAPI
+	Section util.Section
 }
 
 type ThreatIPPayload struct {
@@ -45,7 +46,7 @@ func (t *ThreatIPSavedSearch) Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var ips util.SectionIpRestrictionSchema
+	var ips sectionio.IpRestrictions
 	var results []ThreatIPResult
 	err = json.Unmarshal([]byte(p.Results), &results)
 
@@ -54,9 +55,9 @@ func (t *ThreatIPSavedSearch) Serve(w http.ResponseWriter, r *http.Request) {
 			ips.IpBlacklist = append(ips.IpBlacklist, r.RemoteAddr)
 		}
 	} else {
-		ips = util.SectionIpRestrictionSchema{IpBlacklist: []string{}}
+		ips = sectionio.IpRestrictions{IpBlacklist: []string{}}
 	}
 
-	go t.Section.AddAllIPBlocklist(ips)
+	go t.Section.AddIpRestrictionsToAllApplications(ips)
 	w.WriteHeader(http.StatusOK)
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -10,7 +11,9 @@ import (
 
 	"github.com/dpc-sdp/bay-section-ip-controller/internal/handler"
 	"github.com/dpc-sdp/bay-section-ip-controller/internal/middleware"
+	"github.com/dpc-sdp/bay-section-ip-controller/internal/sectionio"
 	"github.com/dpc-sdp/bay-section-ip-controller/internal/util"
+	"github.com/rs/zerolog"
 )
 
 var (
@@ -25,42 +28,63 @@ var (
 	sectionUsername  = flag.String("u", os.Getenv("SECTION_IO_USERNAME"), "User for Section API")
 	sectionToken     = flag.String("t", os.Getenv("SECTION_IO_TOKEN"), "Token for Section API")
 	sectionAccountId = flag.String("i", os.Getenv("SECTION_IO_ACCOUNT_ID"), "Account ID for Section API")
+	debug            = flag.Bool("debug", false, "Sets log level to debug")
 )
 
 func main() {
 	flag.Parse()
 
-	s := util.SectionAPI{
-		Username:               *sectionUsername,
-		Token:                  *sectionToken,
-		AccountId:              *sectionAccountId,
+	auth := context.WithValue(context.Background(), sectionio.ContextBasicAuth, sectionio.BasicAuth{
+		UserName: *sectionUsername,
+		Password: *sectionToken,
+	})
+
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	if *debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
+
+	cfg := sectionio.NewConfiguration()
+	client := sectionio.NewAPIClient(cfg)
+
+	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
+
+	s := util.Section{
+		Auth:                   auth,
+		Client:                 client,
+		Logger:                 logger,
+		IPTracker:              util.NewIPTracker(),
+		ActionableAccounts:     strings.Split(*sectionAccountId, ","),
 		ActionableEnvironments: strings.Split(*environments, ","),
 		ActionableApplications: strings.Split(*applications, ","),
-		Host:                   "https://aperture.section.io/api/v1",
-		Client:                 &http.Client{},
-		BlockedIps: util.SectionIpRestrictionSchema{
+		BlockedIps: sectionio.IpRestrictions{
 			IpBlacklist: strings.Split(*blockedIps, ","),
 		},
 	}
+
+	logger.Info().Strs("accounts", s.ActionableAccounts).Strs("environments", s.ActionableEnvironments).Strs("applications", s.ActionableApplications).Msg("starting server")
 
 	s.Init()
 
 	router := http.NewServeMux()
 	router.HandleFunc("/_healthz", (&handler.HealthCheck{Section: s}).Serve)
 	router.HandleFunc("/v1/ip/add", (&handler.ThreatIPSavedSearch{Section: s}).Serve)
+	router.HandleFunc("/v1/ip/list", (&handler.ThreatIPList{Section: s}).Serve)
 
 	// Register the middleware.
 	username := os.Getenv("BASIC_AUTH_USERNAME")
 	password := os.Getenv("BASIC_AUTH_PASSWORD")
 
 	b := middleware.BasicAuth{
-		Username:  username,
-		Password:  password,
-		AppliesTo: []string{"/v1/ip/add"},
+		Username: username,
+		Password: password,
+		AppliesTo: []string{
+			"/v1/ip/add",
+			"/v1/ip/list",
+		},
 	}
 
 	handler := applyMiddleware(router, b.Do)
-
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", *port), handler))
 }
 
