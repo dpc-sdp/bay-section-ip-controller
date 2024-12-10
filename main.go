@@ -9,11 +9,12 @@ import (
 	"os"
 	"strings"
 
+	sectionio "github.com/dpc-sdp/go-section-io"
+	"github.com/rs/zerolog"
+
 	"github.com/dpc-sdp/bay-section-ip-controller/internal/handler"
 	"github.com/dpc-sdp/bay-section-ip-controller/internal/middleware"
-	"github.com/dpc-sdp/bay-section-ip-controller/internal/sectionio"
 	"github.com/dpc-sdp/bay-section-ip-controller/internal/util"
-	"github.com/rs/zerolog"
 )
 
 var (
@@ -21,11 +22,11 @@ var (
 	commit  string
 
 	// Variables for running the webserver.
-	port             = flag.String("p", "80", "TCP listen port")
-	blockedIps       = flag.String("b", "", "Comma separated list of IPs to always include in the blocklist")
-	environments     = flag.String("e", "Develop", "Comma separated list of environments to update")
-	applications     = flag.String("a", "", "Comma separate list of applications to update")
-	sectionUsername  = flag.String("u", os.Getenv("SECTION_IO_USERNAME"), "User for Section API")
+	port         = flag.String("p", "80", "TCP listen port")
+	blockedIps   = flag.String("b", "", "Comma separated list of IPs to always include in the blocklist")
+	environments = flag.String("e", "Develop", "Comma separated list of environments to update")
+	applications = flag.String("a", "", "Comma separate list of applications to update")
+	//sectionUsername  = flag.String("u", os.Getenv("SECTION_IO_USERNAME"), "User for Section API")
 	sectionToken     = flag.String("t", os.Getenv("SECTION_IO_TOKEN"), "Token for Section API")
 	sectionAccountId = flag.String("i", os.Getenv("SECTION_IO_ACCOUNT_ID"), "Account ID for Section API")
 	debug            = flag.Bool("debug", false, "Sets log level to debug")
@@ -34,9 +35,8 @@ var (
 func main() {
 	flag.Parse()
 
-	auth := context.WithValue(context.Background(), sectionio.ContextBasicAuth, sectionio.BasicAuth{
-		UserName: *sectionUsername,
-		Password: *sectionToken,
+	auth := context.WithValue(context.Background(), sectionio.ContextAPIKey, sectionio.APIKey{
+		Key: *sectionToken,
 	})
 
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
@@ -53,7 +53,6 @@ func main() {
 		Auth:                   auth,
 		Client:                 client,
 		Logger:                 logger,
-		IPTracker:              util.NewIPTracker(),
 		ActionableAccounts:     strings.Split(*sectionAccountId, ","),
 		ActionableEnvironments: strings.Split(*environments, ","),
 		ActionableApplications: strings.Split(*applications, ","),
@@ -64,12 +63,14 @@ func main() {
 
 	logger.Info().Strs("accounts", s.ActionableAccounts).Strs("environments", s.ActionableEnvironments).Strs("applications", s.ActionableApplications).Msg("starting server")
 
-	s.Init()
+	_, err := s.Init()
+	if err != nil {
+		panic(err)
+	}
 
 	router := http.NewServeMux()
-	router.HandleFunc("/_healthz", (&handler.HealthCheck{Section: s}).Serve)
-	router.HandleFunc("/v1/ip/add", (&handler.ThreatIPSavedSearch{Section: s}).Serve)
-	router.HandleFunc("/v1/ip/list", (&handler.ThreatIPList{Section: s}).Serve)
+	router.HandleFunc("/_healthz", (&handler.HealthcheckHandler{Section: s}).Serve)
+	router.HandleFunc("/v1/ip/add", (&handler.BlocklistHandler{Section: s}).Serve)
 
 	// Register the middleware.
 	username := os.Getenv("BASIC_AUTH_USERNAME")
@@ -80,7 +81,6 @@ func main() {
 		Password: password,
 		AppliesTo: []string{
 			"/v1/ip/add",
-			"/v1/ip/list",
 		},
 	}
 

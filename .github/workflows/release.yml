@@ -1,0 +1,90 @@
+name: goreleaser
+
+on:
+  push:
+    # run only against tags
+    tags:
+      - '*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+          fetch-depth: 0
+      - uses: actions/setup-go@v4
+        with:
+          go-version: stable
+      # More assembly might be required: Docker logins, GPG, etc. It all depends
+      # on your needs.
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docker:
+    name: build
+    runs-on: ubuntu-latest
+    container: ghcr.io/dpc-sdp/bay/ci-builder:6.x
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Build the controller image
+        run: docker build -f Dockerfile -t bay-section-ip-controller .
+      - name: Log in to github container registry
+        run: |
+          GITHUB_USER=$(curl -sSL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/user | gojq -r .login)
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u "${GITHUB_USER}" --password-stdin
+      - name: Get tag
+        if: startsWith(github.ref, 'refs/tags/')
+        run: echo "TAG_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+      - name: Create tagged release
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          docker tag bay-section-ip-controller ghcr.io/dpc-sdp/bay-section-ip-controller:$TAG_VERSION
+      - name: Push tagged release
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          docker push ghcr.io/dpc-sdp/bay-section-ip-controller:$TAG_VERSION
+
+      # Check if this tag is the latest release, if so tag with latest.
+      - name: Check if latest release
+        id: check_latest_release
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const tag = context.ref.replace('refs/tags/', '');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            try {
+              const latestRelease = await github.repos.getLatestRelease({
+                owner,
+                repo,
+              });
+
+              const isLatest = (latestRelease.data.tag_name === tag);
+              return { isLatestRelease: isLatest };
+            } catch (error) {
+              if (error.status === 404) {
+                // No latest release found
+                return { isLatestRelease: false };
+              } else {
+                throw error;
+              }
+            }
+      - name: Tag image with latest
+        if: steps.check_latest_release.outputs.isLatestRelease == 'true'
+        run: |
+          docker tag bay-section-ip-controller ghcr.io/dpc-sdp/bay-section-ip-controller:latest
+          docker push ghcr.io/dpc-sdp/bay-section-ip-controller:latest

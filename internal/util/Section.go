@@ -4,7 +4,7 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/dpc-sdp/bay-section-ip-controller/internal/sectionio"
+	sectionio "github.com/dpc-sdp/go-section-io"
 	"github.com/rs/zerolog"
 )
 
@@ -13,7 +13,6 @@ type Section struct {
 	Client                 *sectionio.APIClient
 	BlockedIps             sectionio.IpRestrictions
 	Logger                 zerolog.Logger
-	IPTracker              *IPTracker
 	ActionableAccounts     []string
 	ActionableEnvironments []string
 	ActionableApplications []string
@@ -93,10 +92,6 @@ func (s *Section) AddIpRestrictionsToAllApplications(ips sectionio.IpRestriction
 			for _, env := range app.Environments {
 				if s.IsActionableEnvironment(env.EnvironmentName) {
 					go func(ctx context.Context, accountId int64, app sectionio.AccountGraphApplications, envName string, ipRestrction sectionio.IpRestrictions, l zerolog.Logger) {
-						for _, ip := range ips.IpBlacklist {
-							s.IPTracker.TrackIP(ip)
-						}
-						ips.IpBlacklist = append(ips.IpBlacklist, s.IPTracker.BackoffIPs()...)
 						_, _, err := s.Client.EnvironmentApi.EnvironmentIpRestrictionsPost(ctx, accountId, int64(app.Id), envName, ips)
 						if err != nil {
 							l.Error().Err(err)
