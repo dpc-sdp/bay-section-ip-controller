@@ -5,15 +5,24 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/dpc-sdp/bay-section-ip-controller/internal/sectionio"
+	sectionio "github.com/dpc-sdp/go-section-io"
+
 	"github.com/dpc-sdp/bay-section-ip-controller/internal/util"
 )
+
+type BlocklistWebhookPayload struct {
+	Results []BlocklistWebhookItem `json:"results"`
+}
+type BlocklistWebhookItem struct {
+	Cidr string `json:"cidr"`
+}
 
 type ThreatIPSavedSearch struct {
 	Section util.Section
 }
 
 type ThreatIPPayload struct {
+	// @todo see if we can optimise marshaling this response into a struct.
 	Results string `json:"results"`
 }
 
@@ -30,7 +39,7 @@ func (t *ThreatIPSavedSearch) Serve(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	var p ThreatIPPayload
+	var p BlocklistWebhookPayload
 	body, err := ioutil.ReadAll(r.Body)
 
 	if err != nil {
@@ -47,15 +56,12 @@ func (t *ThreatIPSavedSearch) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var ips sectionio.IpRestrictions
-	var results []ThreatIPResult
-	err = json.Unmarshal([]byte(p.Results), &results)
-
-	if len(results) > 0 {
-		for _, r := range results {
-			ips.IpBlacklist = append(ips.IpBlacklist, r.RemoteAddr)
-		}
-	} else {
-		ips = sectionio.IpRestrictions{IpBlacklist: []string{}}
+	blocklist := make([]string, 0)
+	for _, r := range p.Results {
+		blocklist = append(blocklist, r.Cidr)
+	}
+	ips = sectionio.IpRestrictions{
+		IpBlacklist: blocklist,
 	}
 
 	go t.Section.AddIpRestrictionsToAllApplications(ips)

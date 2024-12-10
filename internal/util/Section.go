@@ -4,7 +4,7 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/dpc-sdp/bay-section-ip-controller/internal/sectionio"
+	sectionio "github.com/dpc-sdp/go-section-io"
 	"github.com/rs/zerolog"
 )
 
