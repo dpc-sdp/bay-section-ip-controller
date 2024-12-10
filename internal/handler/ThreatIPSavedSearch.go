@@ -21,16 +21,6 @@ type ThreatIPSavedSearch struct {
 	Section util.Section
 }
 
-type ThreatIPPayload struct {
-	// @todo see if we can optimise marshaling this response into a struct.
-	Results string `json:"results"`
-}
-
-type ThreatIPResult struct {
-	Count      int    `json:"Count"`
-	RemoteAddr string `json:"message.request.remote_addr"`
-}
-
 func (t *ThreatIPSavedSearch) Serve(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)

@@ -53,7 +53,6 @@ func main() {
 		Auth:                   auth,
 		Client:                 client,
 		Logger:                 logger,
-		IPTracker:              util.NewIPTracker(),
 		ActionableAccounts:     strings.Split(*sectionAccountId, ","),
 		ActionableEnvironments: strings.Split(*environments, ","),
 		ActionableApplications: strings.Split(*applications, ","),

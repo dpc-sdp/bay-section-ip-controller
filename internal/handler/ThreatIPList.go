@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/dpc-sdp/bay-section-ip-controller/internal/util"
@@ -17,7 +16,8 @@ func (t *ThreatIPList) Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jsonData, err := json.Marshal(t.Section.IPTracker.GetAll())
+	//jsonData, err := json.Marshal(t.Section.IPTracker.GetAll())
+	jsonData, err := func() ([]byte, error) { return []byte("{}"), nil }()
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
