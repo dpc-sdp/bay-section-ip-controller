@@ -1,4 +1,4 @@
-FROM golang:1.17 AS builder
+FROM golang:latest AS builder
 
 ARG VERSION
 ARG COMMIT
