@@ -22,6 +22,7 @@ type BlocklistHandler struct {
 }
 
 func (t *BlocklistHandler) Serve(w http.ResponseWriter, r *http.Request) {
+	t.Section.Logger.Debug().Msg("serving http request")
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return

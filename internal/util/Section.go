@@ -92,6 +92,7 @@ func (s *Section) AddIpRestrictionsToAllApplications(ips sectionio.IpRestriction
 			for _, env := range app.Environments {
 				if s.IsActionableEnvironment(env.EnvironmentName) {
 					go func(ctx context.Context, accountId int64, app sectionio.AccountGraphApplications, envName string, ipRestrction sectionio.IpRestrictions, l zerolog.Logger) {
+						s.Logger.Info().Msgf("adding ips to blocklist: %d", len(ips.IpBlacklist))
 						_, _, err := s.Client.EnvironmentApi.EnvironmentIpRestrictionsPost(ctx, accountId, int64(app.Id), envName, ips)
 						if err != nil {
 							l.Error().Err(err)
