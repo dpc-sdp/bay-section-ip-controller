@@ -17,11 +17,11 @@ type BlocklistWebhookItem struct {
 	Cidr string `json:"cidr"`
 }
 
-type ThreatIPSavedSearch struct {
+type BlocklistHandler struct {
 	Section util.Section
 }
 
-func (t *ThreatIPSavedSearch) Serve(w http.ResponseWriter, r *http.Request) {
+func (t *BlocklistHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return

@@ -7,7 +7,7 @@ import (
 	"github.com/dpc-sdp/bay-section-ip-controller/internal/util"
 )
 
-type HealthCheck struct {
+type HealthcheckHandler struct {
 	Section util.Section
 }
 
@@ -16,7 +16,7 @@ type HealthCheckResponse struct {
 	Status string `json:"status"`
 }
 
-func (t *HealthCheck) Serve(w http.ResponseWriter, r *http.Request) {
+func (t *HealthcheckHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return

@@ -10,11 +10,11 @@ import (
 	"strings"
 
 	sectionio "github.com/dpc-sdp/go-section-io"
+	"github.com/rs/zerolog"
 
 	"github.com/dpc-sdp/bay-section-ip-controller/internal/handler"
 	"github.com/dpc-sdp/bay-section-ip-controller/internal/middleware"
 	"github.com/dpc-sdp/bay-section-ip-controller/internal/util"
-	"github.com/rs/zerolog"
 )
 
 var (
@@ -69,9 +69,8 @@ func main() {
 	}
 
 	router := http.NewServeMux()
-	router.HandleFunc("/_healthz", (&handler.HealthCheck{Section: s}).Serve)
-	router.HandleFunc("/v1/ip/add", (&handler.ThreatIPSavedSearch{Section: s}).Serve)
-	router.HandleFunc("/v1/ip/list", (&handler.ThreatIPList{Section: s}).Serve)
+	router.HandleFunc("/_healthz", (&handler.HealthcheckHandler{Section: s}).Serve)
+	router.HandleFunc("/v1/ip/add", (&handler.BlocklistHandler{Section: s}).Serve)
 
 	// Register the middleware.
 	username := os.Getenv("BASIC_AUTH_USERNAME")
@@ -82,7 +81,6 @@ func main() {
 		Password: password,
 		AppliesTo: []string{
 			"/v1/ip/add",
-			"/v1/ip/list",
 		},
 	}
 
