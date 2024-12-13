@@ -1,21 +1,24 @@
-# Section IP Controller
+# Section IP Block Controller
 
-HTTP Listener that receives a payload of bad IP addresses and updates application blocklists via the Aperture API.
+This application launches a webserver listening for POST requests to `/v1/ip/add`. Typically requests to this endpoint originate from a SumoLogic webhook connection.
+
+The payload expected by this endpoint is a json object that looks something like this
+
+```
+{
+    "results": "[{\"cidr\":\"1.2.3.4/32\"},{\"cidr\":\"4.5.6.7/32\"}]"
+}
+```
+
+The `results` value should be a string-encoded json object. This is weird, but its a limitation of SumoLogic's webhook feature.
+
+## Solution Architecture
+
+This diagram shows the high-level solution architecture. This application is the `IP blocklist controller` component.
+
+![Architecture](./docs/img/architecture.jpg)
 
 ## Installation
-
-### Docker
-
-Run directly from a docker image:
-```sh
-docker run --rm ghcr.io/dpc-sdp/bay-section-ip-controller:main bay-section-ip-controller <flags>
-```
-
-Or add to your docker image:
-
-```Dockerfile
-COPY --from=ghcr.io/dpc-sdp/bay-section-ip-controller:main /usr/local/bin/bay-section-ip-controller /usr/local/bin/bay-section-ip-controller
-```
 
 ## Usage
 
@@ -32,13 +35,11 @@ Usage of bay-section-ip-controller:
   -e string
         Comma separated list of environments to update (default "Develop")
   -i string
-        Account ID for Section API (default os.Getenv("SECTION_IO_ACCOUNT_ID"))
+        Account ID for Section API
   -p string
         TCP listen port (default "80")
   -t string
         Token for Section API (default os.Getenv("SECTION_IO_TOKEN"))
-  -u string
-        User for Section API (default os.Getenv("SECTION_IO_USERNAME"))
 ```
 
 ## Local development
