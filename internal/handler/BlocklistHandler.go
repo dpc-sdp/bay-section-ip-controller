@@ -34,6 +34,7 @@ func (t *BlocklistHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 
 	if err != nil {
+		t.Section.Logger.Error().Err(err).Msg("error reading request body")
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		w.Write([]byte(err.Error()))
 		return
@@ -41,6 +42,8 @@ func (t *BlocklistHandler) Serve(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(body, &p)
 	if err != nil {
+		t.Section.Logger.Error().Err(err).Msg("error parsing request body")
+		t.Section.Logger.Debug().Msg(string(body))
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		w.Write([]byte(err.Error()))
 		return
