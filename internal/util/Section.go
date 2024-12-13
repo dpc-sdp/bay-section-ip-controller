@@ -19,6 +19,15 @@ type Section struct {
 	Accounts               []sectionio.AccountGraph
 }
 
+type UpdateBlocklistInput struct {
+	ctx       context.Context
+	Log       zerolog.Logger
+	AccountId int64
+	AppId     int64
+	EnvName   string
+	Ips       sectionio.IpRestrictions
+}
+
 func (s *Section) Init() (bool, error) {
 	apps, _, err := s.Client.AccountApi.AccountGraph(s.Auth)
 	s.Logger.Debug().Msg("fetching account graph")
@@ -91,21 +100,27 @@ func (s *Section) AddIpRestrictionsToAllApplications(ips sectionio.IpRestriction
 			}
 			for _, env := range app.Environments {
 				if s.IsActionableEnvironment(env.EnvironmentName) {
-					go func() {
-						s.Logger.Info().Msgf("adding ips to blocklist: %d", len(ips.IpBlacklist))
-						ipRestrictions, resp, err := s.Client.EnvironmentApi.EnvironmentIpRestrictionsPost(s.Auth, int64(account.Id), int64(app.Id), env.EnvironmentName, ips)
+					in := &UpdateBlocklistInput{
+						ctx:       s.Auth,
+						AccountId: int64(account.Id),
+						AppId:     int64(app.Id),
+						EnvName:   env.EnvironmentName,
+						Ips:       ips,
+					}
+					in.Log = s.Logger.With().
+						Int64("account", in.AccountId).
+						Int64("app", in.AppId).
+						Str("env", in.EnvName).
+						Logger()
+					go func(in *UpdateBlocklistInput) {
+						in.Log.Info().Msgf("adding %d ips to blocklist", len(in.Ips.IpBlacklist), in.AppId, in.EnvName)
+						_, resp, err := s.Client.EnvironmentApi.EnvironmentIpRestrictionsPost(in.ctx, in.AccountId, in.AppId, in.EnvName, in.Ips)
 						if err != nil {
-							s.Logger.Err(err).Msg("failed to add ips to blocklist")
+							in.Log.Err(err).Str("statusCode", resp.Status).Msg("failed to add Ips to blocklist")
 							return
 						}
-						s.Logger.Info().
-							Int64("account", int64(account.Id)).
-							Strs("ips", ipRestrictions.IpBlacklist).
-							Int64("response_code", int64(resp.StatusCode)).
-							Str("env", env.EnvironmentName).
-							Str("app", app.ApplicationName).
-							Msg("successfully updated ip restrictions")
-					}()
+						in.Log.Info().Msg("successfully updated ip restrictions")
+					}(in)
 				}
 			}
 		}
