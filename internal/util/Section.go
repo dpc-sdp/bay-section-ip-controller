@@ -113,7 +113,7 @@ func (s *Section) AddIpRestrictionsToAllApplications(ips sectionio.IpRestriction
 						Str("env", in.EnvName).
 						Logger()
 					go func(in *UpdateBlocklistInput) {
-						in.Log.Info().Msgf("adding %d ips to blocklist", len(in.Ips.IpBlacklist), in.AppId, in.EnvName)
+						in.Log.Info().Msgf("adding %d ips to blocklist", len(in.Ips.IpBlacklist))
 						_, resp, err := s.Client.EnvironmentApi.EnvironmentIpRestrictionsPost(in.ctx, in.AccountId, in.AppId, in.EnvName, in.Ips)
 						if err != nil {
 							in.Log.Err(err).Str("statusCode", resp.Status).Msg("failed to add Ips to blocklist")
