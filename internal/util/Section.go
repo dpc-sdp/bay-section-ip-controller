@@ -91,15 +91,21 @@ func (s *Section) AddIpRestrictionsToAllApplications(ips sectionio.IpRestriction
 			}
 			for _, env := range app.Environments {
 				if s.IsActionableEnvironment(env.EnvironmentName) {
-					go func(ctx context.Context, accountId int64, app sectionio.AccountGraphApplications, envName string, ipRestrction sectionio.IpRestrictions, l zerolog.Logger) {
+					go func() {
 						s.Logger.Info().Msgf("adding ips to blocklist: %d", len(ips.IpBlacklist))
-						_, _, err := s.Client.EnvironmentApi.EnvironmentIpRestrictionsPost(ctx, accountId, int64(app.Id), envName, ips)
+						ipRestrictions, resp, err := s.Client.EnvironmentApi.EnvironmentIpRestrictionsPost(s.Auth, int64(account.Id), int64(app.Id), env.EnvironmentName, ips)
 						if err != nil {
-							l.Error().Err(err)
+							s.Logger.Err(err).Msg("failed to add ips to blocklist")
 							return
 						}
-						l.Info().Int64("account", accountId).Strs("ips", ips.IpBlacklist).Str("env", envName).Str("app", app.ApplicationName).Msg("successfully updated ip restrictions")
-					}(s.Auth, int64(account.Id), app, env.EnvironmentName, ips, s.Logger)
+						s.Logger.Info().
+							Int64("account", int64(account.Id)).
+							Strs("ips", ipRestrictions.IpBlacklist).
+							Int64("response_code", int64(resp.StatusCode)).
+							Str("env", env.EnvironmentName).
+							Str("app", app.ApplicationName).
+							Msg("successfully updated ip restrictions")
+					}()
 				}
 			}
 		}
